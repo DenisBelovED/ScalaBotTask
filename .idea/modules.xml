@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/scalabottask.iml" filepath="$PROJECT_DIR$/.idea/modules/scalabottask.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ScalaBotTask.iml" filepath="$PROJECT_DIR$/.idea/modules/ScalaBotTask.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/scalabottask-build.iml" filepath="$PROJECT_DIR$/.idea/modules/scalabottask-build.iml" />
     </modules>
   </component>
