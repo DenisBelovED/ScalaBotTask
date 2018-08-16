@@ -1,5 +1,22 @@
 object CommandsResponseAlarms {
-  def TimeAlarm = s"Wrong time format. Format: hh:mm:ss yy:MM:dd"
-  def TimeNotSatatement = s"Time not statement"
-  def TimeInvalid = s"Stated time is invalid"
+  private def printer(s: String): Unit = println(s) //TODO вывод в чат
+  def TimeAlarm(): Unit = printer(s"Неверный формат времени. Формат: hh:mm:ss yy:MM:dd")
+  def TimeNotSatatement(pollId: Long): Unit = printer(s"Время старта и окончания не указано, ID опроса: " + pollId.toString)
+  def TimeInvalid(): Unit = printer(s"Указанное время неверно")
+  def TimeIsCorrect(pollId: Long): Unit = printer(s"Время старта и окончания указано правильно, ID опроса: " + pollId.toString)
+  def TimeIsCorrectStart(pollId: Long): Unit = printer(s"Время старта указано правильно, ID опроса: " + pollId.toString)
+  def TimeIsCorrectStop(pollId: Long): Unit = printer(s"Время окончания указано правильно, ID опроса: " + pollId.toString)
+  def TimeException(): Unit = printer(s"Ошибка в указании времени. Формат: hh:mm:ss yy:MM:dd")
+  def PollSuccessDelete(): Unit = printer(s"Опрос удалён")
+  def PollFailedDelete(): Unit = printer(s"Опрос не удалён, возможно его не существует")
+  def PollDeleteError(): Unit = printer(s"Удаление недоступно - вы не являетесь владельцем опроса")
+  def ListWriter(s: String): Unit = printer(s)
+  def StartPollPremissionError(): Unit = printer(s"Вы не можете запустить этот опрос")
+  def PollStarted(): Unit = printer(s"Опрос уже запущен")
+  def PollStoped(): Unit = printer(s"Опрос уже остановлен")
+  def PollStartFromTimer(): Unit = printer(s"Запуск вручную невозможен, опрос будет автоматический запущен")
+  def PollStopFromTimer(): Unit = printer(s"Остановка вручную невозможна, опрос будет автоматический остановлен")
+  def PollStartFromHandle(): Unit = printer(s"Опрос запущен")
+  def PollStopFromHandle(): Unit = printer(s"Опрос остановлен")
+  def PollNotExist(): Unit = printer(s"Опрос не существует")
 }
