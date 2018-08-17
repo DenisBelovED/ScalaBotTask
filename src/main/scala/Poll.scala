@@ -1,4 +1,4 @@
-case class Poll(
+case class Poll (
             creatorId: Int,
             pollId: Long,
             name: String,
@@ -6,9 +6,9 @@ case class Poll(
             visibility: PollResultVisibility = AfterStop,
             timeStart: DateTimeSolver = null,
             timeStop: DateTimeSolver = null,
-            status: PollStatus = PollStop,
-            context: Context = null
-          )
+            status: PollStatus = PollHasNotYetBeenLaunched,
+            var context: Vector[Map[Int, String]] = Vector.empty
+          ) extends ContextManager
 {
-  
+
 }

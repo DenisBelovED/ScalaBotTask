@@ -10,8 +10,9 @@ object CommandsResponseAlarms {
   def PollSuccessDelete(): Unit = printer(s"Опрос удалён")
   def PollFailedDelete(): Unit = printer(s"Опрос не удалён, возможно его не существует")
   def PollDeleteError(): Unit = printer(s"Удаление недоступно - вы не являетесь владельцем опроса")
-  def ListWriter(s: String): Unit = printer(s)
+  def DataWriter(s: String): Unit = printer(s)
   def StartPollPremissionError(): Unit = printer(s"Вы не можете запустить этот опрос")
+  def StopPollPremissionError(): Unit = printer(s"Вы не можете остановить этот опрос")
   def PollStarted(): Unit = printer(s"Опрос уже запущен")
   def PollStoped(): Unit = printer(s"Опрос уже остановлен")
   def PollStartFromTimer(): Unit = printer(s"Запуск вручную невозможен, опрос будет автоматический запущен")
@@ -19,4 +20,7 @@ object CommandsResponseAlarms {
   def PollStartFromHandle(): Unit = printer(s"Опрос запущен")
   def PollStopFromHandle(): Unit = printer(s"Опрос остановлен")
   def PollNotExist(): Unit = printer(s"Опрос не существует")
+  def PollHasNotYetBeenLaunched(): Unit = printer(s"Опрос пока-что не запускали")
+  def PollNotAble(): Unit = printer(s"Результаты опроса можно получить после окончания голосования")
+  def PollException(): Unit = printer(s"Неизвестная ошибка")
 }

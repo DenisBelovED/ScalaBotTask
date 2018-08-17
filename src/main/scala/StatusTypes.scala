@@ -15,6 +15,7 @@ case object PollPrivilegeError extends PollStatus
 case object PollNotExist extends PollStatus
 case object PollStart extends PollStatus
 case object PollStop extends PollStatus
+case object PollHasNotYetBeenLaunched extends PollStatus
 
 sealed trait ContextStatus
 case object ContextBegin extends ContextStatus

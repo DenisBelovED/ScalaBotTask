@@ -1,4 +1,1 @@
-case class DataEntities(
-                         contexts: Map[Long, String],
-                         polls: Map[Long, Poll],
-                       )
+case class DataEntities(polls: Map[Long, Poll])

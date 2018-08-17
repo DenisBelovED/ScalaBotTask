@@ -7,7 +7,7 @@ case class PollCommands(var dataBase: DataEntities) {
                   anonymity: Boolean = true,
                   visibility: PollResultVisibility = AfterStop,
                   timeStartStr: String = null,
-                  timeStopStr: String = null): Any =
+                  timeStopStr: String = null): Long =
   {
     val pollId = UUIDGenerator.GetUUID()
     val timeStart = new DateTimeSolver()
@@ -39,6 +39,7 @@ case class PollCommands(var dataBase: DataEntities) {
         pollId
       case _ =>
         CommandsResponseAlarms.TimeException()
+        -1
     }
   }
 
@@ -47,13 +48,14 @@ case class PollCommands(var dataBase: DataEntities) {
     val answer = dataBase.polls.map(
       t => {"user id = " + t._2.creatorId + " : poll id = " + t._2.pollId + " : " + t._2.name + " - " + t._2.status}
     ).mkString("\n")
-    CommandsResponseAlarms.ListWriter(answer)
+    CommandsResponseAlarms.DataWriter(answer)
     answer
   }
 
-  def DeletePoll(pollId: Long, userId: Int): PollStatus = {
+  def DeletePoll(pollId: Long, userId: Int): PollStatus =
+  {
     if(dataBase.polls(pollId).creatorId == userId){
-      if (Try(dataBase = dataBase.copy(polls = dataBase.polls - pollId, contexts = dataBase.contexts - pollId)).isSuccess){
+      if (Try(dataBase = dataBase.copy(polls = dataBase.polls - pollId)).isSuccess){
         CommandsResponseAlarms.PollSuccessDelete()
         PollSuccessDelete
       }
@@ -75,7 +77,7 @@ case class PollCommands(var dataBase: DataEntities) {
         case PollStart =>
           CommandsResponseAlarms.PollStarted()
           PollStart
-        case PollStop =>
+        case PollStop | PollHasNotYetBeenLaunched =>
           if (dataBase.polls(pollId).timeStart == null) {
             CommandsResponseAlarms.PollStartFromHandle()
             val poll = dataBase.polls(pollId)
@@ -101,7 +103,7 @@ case class PollCommands(var dataBase: DataEntities) {
   {
     if(dataBase.polls(pollId).creatorId == userId){
       dataBase.polls(pollId).status match {
-        case PollStop =>
+        case PollStop | PollHasNotYetBeenLaunched =>
           CommandsResponseAlarms.PollStoped()
           PollStop
         case PollStart =>
@@ -121,14 +123,60 @@ case class PollCommands(var dataBase: DataEntities) {
       }
     }
     else {
-      CommandsResponseAlarms.StartPollPremissionError()
+      CommandsResponseAlarms.StopPollPremissionError()
       PollPrivilegeError
     }
   }
 
-  def Result(pollId: Long, userId: Int): String =
+  def Result(pollId: Long): String =
   {
-    //TODO Красивый отчет о текущем/прошедшем голосовании
-    "Красивый отчет о текущем/прошедшем голосовании"
+    def CountResult: String = {
+      val results = dataBase.polls(pollId).context
+      if (dataBase.polls(pollId).anonymoys) {
+        "всего ответов: " + results.size + "\n" +
+          results.flatten
+            .map(t => t._2)
+            .groupBy(identity)
+            .mapValues(_.size)
+            .map(t => "За " + t._1 + " проголосовало " + t._2)
+            .mkString("\n")
+      } else {
+        "всего ответов: " + results.size + "\n" +
+          results.flatten
+            .map(t => t._2)
+            .groupBy(identity)
+            .mapValues(_.size)
+            .map(
+              t => "За " + t._1 + " проголосовало " + t._2 + " их id: " +
+                results.flatten.groupBy(m => m._2).mapValues(m => m.map(p => p._1))(t._1).mkString(" ")
+            )
+            .mkString("\n")
+      }
+    }
+
+    dataBase.polls(pollId).status match {
+      case PollHasNotYetBeenLaunched =>
+        CommandsResponseAlarms.PollHasNotYetBeenLaunched()
+        "PollHasNotYetBeenLaunched"
+      case PollStart =>
+        dataBase.polls(pollId).visibility match {
+          case Continuous =>
+            val res = CountResult
+            CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " активен")
+            CommandsResponseAlarms.DataWriter(res)
+            res
+          case AfterStop =>
+            CommandsResponseAlarms.PollNotAble()
+            "PollNotAble"
+        }
+      case PollStop =>
+        val res = CountResult
+        CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " остановлен")
+        CommandsResponseAlarms.DataWriter(res)
+        res
+      case _ =>
+        CommandsResponseAlarms.PollException()
+        "PollException"
+    }
   }
 }
