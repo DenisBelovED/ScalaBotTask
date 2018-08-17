@@ -1,0 +1,1 @@
+case class DataEntities(polls: Map[Long, Poll])
