@@ -1,3 +1,1 @@
-object BotKernel extends PollCommands(DataEntities(Map.empty)) {
-
-}
+object BotKernel extends PollCommands(DataEntities(Map.empty, Map.empty, Map.empty))

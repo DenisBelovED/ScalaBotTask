@@ -21,6 +21,7 @@ sealed trait ContextStatus
 case object ContextBegin extends ContextStatus
 case object ContextNotExist extends ContextStatus
 case object ContextEnd extends ContextStatus
+case object ContextEndError extends ContextStatus
 
 sealed trait QuestionType
 case object Open extends QuestionType
@@ -29,7 +30,11 @@ case object Multi extends QuestionType
 
 sealed trait QuestionStatus
 case object QuestionSuccessDelete extends QuestionStatus
+case object QuestionFailedDelete extends QuestionStatus
 case object QuestionNotExist extends QuestionStatus
+case object QuestionContextError extends QuestionStatus
+case object QuestionContextPremissionError extends QuestionStatus
+case object QuestionContextImmutable extends QuestionStatus
 
 sealed trait AnswerStatus
 case object AnswerCorrect extends AnswerStatus

@@ -131,7 +131,7 @@ case class PollCommands(var dataBase: DataEntities) {
   def Result(pollId: Long): String =
   {
     def CountResult: String = {
-      val results = dataBase.polls(pollId).context
+      val results = dataBase.polls(pollId).answers
       if (dataBase.polls(pollId).anonymoys) {
         "всего ответов: " + results.size + "\n" +
           results.flatten
@@ -178,5 +178,151 @@ case class PollCommands(var dataBase: DataEntities) {
         CommandsResponseAlarms.PollException()
         "PollException"
     }
+  }
+
+  def Begin(pollId: Long, userId: Int): ContextStatus =
+  {
+    if (dataBase.polls.contains(pollId)) {
+      dataBase = dataBase.copy(contexts = dataBase.contexts + (userId -> pollId))
+      CommandsResponseAlarms.ContextBegin(pollId)
+      ContextBegin
+    } else {
+      CommandsResponseAlarms.ContextNotExist(pollId)
+      ContextNotExist
+    }
+  }
+
+  def End(userId: Int): ContextStatus =
+  {
+    if(dataBase.contexts.contains(userId)){
+      dataBase = dataBase.copy(contexts = dataBase.contexts - userId)
+      CommandsResponseAlarms.ContextEnd()
+      ContextEnd
+    }
+    else {
+      CommandsResponseAlarms.ContextNotBegin()
+      ContextEndError
+    }
+  }
+
+  def View(userId: Int): String =
+  {
+    if(dataBase.contexts.contains(userId)) {
+      val pollId = dataBase.contexts(userId)
+      dataBase.questions.foreach(m => {
+        if(m._2.qestionData._5 == pollId) {
+          val res = "\n" +
+            //"Уникальный ID вопроса : " + m._1.toString + "\n" +
+            "Индекс вопроса : " + m._2.qestionData._1.toString + "\n" +
+            "Заголовок вопроса : " + m._2.qestionData._2 + "\n" +
+            "Тип вопроса : " + m._2.qestionData._3.toString + "\n" +
+            "Варианты ответов\n - " + m._2.qestionData._4.mkString("\n - ")
+          CommandsResponseAlarms.DataWriter(res)
+          res
+        }
+      })
+      "Correct view"
+    }
+    else {
+      CommandsResponseAlarms.ContextNotBegin()
+      "Out of context error"
+    }
+  }
+
+  def AddQuestion(
+                   userId: Int,
+                   question: String,
+                   typeQuestion: QuestionType = Open,
+                   varAnswers: Vector[String]
+                 ): String =
+  {
+    if(dataBase.contexts.contains(userId)) {
+      if(userId == dataBase.polls(dataBase.contexts(userId)).creatorId){
+        if(dataBase.polls(dataBase.contexts(userId)).status != PollStart){
+          val uuid = UUIDGenerator.GetUUID()
+          dataBase = dataBase.copy(
+            questions = dataBase.questions + (
+              uuid -> Question((dataBase.questions.keys.size + 1, question, typeQuestion, varAnswers, dataBase.contexts(userId)))
+              )
+          )
+          val res = dataBase.questions(uuid)
+          CommandsResponseAlarms.DataWriter(
+            "Добавлен вопрос: " + res.qestionData._2 + "\n" +
+              "Статус: " + res.qestionData._3.toString + "\n" +
+              "Варианты ответа:\n - " + res.qestionData._4.mkString("\n - ") + "\n" +
+              "Номер: " + res.qestionData._1.toString
+          )
+          res.qestionData._1.toString
+        }
+        else {
+          CommandsResponseAlarms.DataWriter("Ошибка. Опрос запущен, контекст нельзя изменить")
+          "Question context immutable"
+        }
+      }
+      else {
+        CommandsResponseAlarms.ContextPremissionError()
+        "Context premission error"
+      }
+    }
+    else {
+      CommandsResponseAlarms.ContextNotBegin()
+      "Out of context error"
+    }
+  }
+
+  def DeleteQuestion(questionId: Int, userId: Int): QuestionStatus =
+  {
+    if(dataBase.contexts.contains(userId)) {
+      if(userId == dataBase.polls(dataBase.contexts(userId)).creatorId){
+        if(dataBase.polls(dataBase.contexts(userId)).status != PollStart){
+          if((0 < questionId) && (questionId <= dataBase.questions.size)) {
+            val numToIdMap = dataBase.questions.mapValues(q => q.qestionData._1).map(m => m.swap)
+            dataBase = dataBase.copy(questions = dataBase.questions - numToIdMap(questionId))
+            val numsIter = (1 to dataBase.questions.size).iterator
+            val indexes = dataBase.questions.map(m => m._1 -> numsIter.next())
+            dataBase.questions.keys.foreach(key =>
+            {
+              val t = dataBase.questions(key).qestionData
+              dataBase = dataBase.copy(
+                questions = dataBase.questions +
+                  (key -> dataBase.questions(key).copy(qestionData = (indexes(key), t._2, t._3, t._4, t._5)))
+              )
+            }
+            )
+            CommandsResponseAlarms.DataWriter("Вопрос " + questionId.toString + " удалён")
+            CommandsResponseAlarms.DataWriter("теперь опрос выглядит так:")
+            dataBase.questions.foreach(q =>
+              CommandsResponseAlarms.DataWriter(
+                q._2.qestionData._1.toString + ") " + q._2.qestionData._2 + "\n - " +
+                  q._2.qestionData._4.mkString("\n - ")
+              )
+            )
+            QuestionSuccessDelete
+          }
+          else {
+            CommandsResponseAlarms.DataWriter("Ошибка. Указан неверный номер вопроса")
+            QuestionFailedDelete
+          }
+        }
+        else {
+          CommandsResponseAlarms.DataWriter("Ошибка. Опрос запущен, контекст нельзя изменить")
+          QuestionContextImmutable
+        }
+      }
+      else {
+        CommandsResponseAlarms.ContextPremissionError()
+        QuestionContextPremissionError
+      }
+    }
+    else {
+      CommandsResponseAlarms.ContextNotBegin()
+      QuestionContextError
+    }
+  }
+
+  def Answer(userId: Int, answerId: Int, answer: String): AnswerStatus =
+  {
+    //TODO сообщение об успехе или ошибка
+    AnswerCorrect
   }
 }

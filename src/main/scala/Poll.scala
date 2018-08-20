@@ -7,8 +7,5 @@ case class Poll (
             timeStart: DateTimeSolver = null,
             timeStop: DateTimeSolver = null,
             status: PollStatus = PollHasNotYetBeenLaunched,
-            var context: Vector[Map[Int, String]] = Vector.empty
-          ) extends ContextManager
-{
-
-}
+            var answers: Vector[Map[Int, (Long, String)]] = Vector.empty
+          )

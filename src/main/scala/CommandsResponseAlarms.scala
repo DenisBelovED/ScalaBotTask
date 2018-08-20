@@ -23,4 +23,10 @@ object CommandsResponseAlarms {
   def PollHasNotYetBeenLaunched(): Unit = printer(s"Опрос пока-что не запускали")
   def PollNotAble(): Unit = printer(s"Результаты опроса можно получить после окончания голосования")
   def PollException(): Unit = printer(s"Неизвестная ошибка")
+  def ContextPremissionError(): Unit = printer(s"Вы не можете редактировать контекст этого опроса")
+  def ContextBegin(pollId: Long): Unit = printer(s"Вы вошли в контекст " + pollId.toString)
+  def ContextNotExist(pollId: Long): Unit = printer(s"Контекст " + pollId.toString + " не существует, вероятно pollID указан не верно")
+  def ContextEnd(): Unit = printer(s"Вы вышли из контекста")
+  def ContextNotBegin(): Unit = printer(s"Ошибка. Вы не заходили в контекст")
+
 }
