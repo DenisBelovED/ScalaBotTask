@@ -1,5 +1,5 @@
 case class Question(qestionData: (
-                      Int, // question index
+                      Int, // question id
                       String, // question header
                       QuestionType, // open | choice | multi
                       Vector[String], // answer variants

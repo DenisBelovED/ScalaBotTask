@@ -7,5 +7,5 @@ case class Poll (
             timeStart: DateTimeSolver = null,
             timeStop: DateTimeSolver = null,
             status: PollStatus = PollHasNotYetBeenLaunched,
-            var answers: Vector[Map[Int, (Long, String)]] = Vector.empty
+            var answers: Map[(Int, Long, Int), String] = Map.empty
           )

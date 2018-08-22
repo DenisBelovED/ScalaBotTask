@@ -39,3 +39,6 @@ case object QuestionContextImmutable extends QuestionStatus
 sealed trait AnswerStatus
 case object AnswerCorrect extends AnswerStatus
 case object AnswerIncorrect extends AnswerStatus
+case object AnswerContextError extends AnswerStatus
+case object AnswerIndexError extends AnswerStatus
+case object AnswerUnavaliablePollNotRun extends AnswerStatus

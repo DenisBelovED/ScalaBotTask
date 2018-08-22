@@ -134,23 +134,25 @@ case class PollCommands(var dataBase: DataEntities) {
       val results = dataBase.polls(pollId).answers
       if (dataBase.polls(pollId).anonymoys) {
         "всего ответов: " + results.size + "\n" +
-          results.flatten
-            .map(t => t._2)
+          results
+            .values
             .groupBy(identity)
             .mapValues(_.size)
-            .map(t => "За " + t._1 + " проголосовало " + t._2)
+            .map(t => "За ответ " + t._1 + " проголосовало " + t._2)
             .mkString("\n")
       } else {
         "всего ответов: " + results.size + "\n" +
-          results.flatten
-            .map(t => t._2)
+          results
+            .values
             .groupBy(identity)
             .mapValues(_.size)
             .map(
-              t => "За " + t._1 + " проголосовало " + t._2 + " их id: " +
-                results.flatten.groupBy(m => m._2).mapValues(m => m.map(p => p._1))(t._1).mkString(" ")
-            )
-            .mkString("\n")
+              t => "За ответ " + t._1 + " проголосовало " + t._2 + " их id: " +
+                results
+                  .groupBy(m => m._2)
+                  .mapValues(m => m.map(p => p._1._1))(t._1)
+                  .mkString(" ")
+            ).mkString("\n")
       }
     }
 
@@ -162,7 +164,7 @@ case class PollCommands(var dataBase: DataEntities) {
         dataBase.polls(pollId).visibility match {
           case Continuous =>
             val res = CountResult
-            CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " активен")
+            CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " активен")
             CommandsResponseAlarms.DataWriter(res)
             res
           case AfterStop =>
@@ -171,7 +173,7 @@ case class PollCommands(var dataBase: DataEntities) {
         }
       case PollStop =>
         val res = CountResult
-        CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " остановлен")
+        CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " остановлен")
         CommandsResponseAlarms.DataWriter(res)
         res
       case _ =>
@@ -320,9 +322,96 @@ case class PollCommands(var dataBase: DataEntities) {
     }
   }
 
+  //TODO Check to int
   def Answer(userId: Int, answerId: Int, answer: String): AnswerStatus =
   {
-    //TODO сообщение об успехе или ошибка
-    AnswerCorrect
+    def ChoiceVoter(ans: String, uuidQuestion: Long, pollId: Long): AnswerStatus = {
+      Try(ans.toInt).map(i => {
+        if ((0 < i) && (i <= dataBase.questions(uuidQuestion).qestionData._4.size)){
+          val newPollCopy = dataBase.polls(pollId).copy(
+            answers = dataBase.polls(pollId).answers + ((userId, uuidQuestion, answerId) -> i.toString)
+          )
+          dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> newPollCopy))
+          CommandsResponseAlarms.DataWriter("Ваш голос принят")
+          AnswerCorrect
+        }
+        else {
+          CommandsResponseAlarms.DataWriter("Ошибка. Указанный индекс вопроса не существует")
+          AnswerIndexError
+        }
+      }).getOrElse({
+        CommandsResponseAlarms.DataWriter("Ошибка. Вы указали не число")
+        AnswerIncorrect
+      })
+    }
+
+    def MultiVoter(ans: String, uuidQuestion: Long, pollId: Long): AnswerStatus = {
+      val splitedAns = ans
+        .split(' ')
+        .distinct
+        .sorted
+      val preparedAns = splitedAns.mkString(" ")
+      if (!splitedAns.map(n => {
+        Try(n.toInt).map(i => {
+          if ((0 < i) && (i <= dataBase.questions(uuidQuestion).qestionData._4.size)) {
+            val newPollCopy = dataBase.polls(pollId).copy(
+              answers = dataBase.polls(pollId).answers + ((userId, uuidQuestion, answerId) -> preparedAns)
+            )
+            dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> newPollCopy))
+            AnswerCorrect
+          }
+          else {
+            AnswerIncorrect
+          }
+        }).getOrElse({
+          AnswerIncorrect
+        })
+      }).contains(AnswerIncorrect)) {
+        CommandsResponseAlarms.DataWriter("Ваш голос принят")
+        AnswerCorrect
+      } else {
+        CommandsResponseAlarms.DataWriter("Ошибка. Вы указали не число или индекс, которого не существует")
+        AnswerIncorrect
+      }
+    }
+
+    if(dataBase.contexts.contains(userId)) {
+      val pollId = dataBase.contexts(userId)
+      if(dataBase.polls(pollId).status == PollStart){
+        val mapAnsIdToQuuid = dataBase.questions.filter(m =>
+          (m._2.qestionData._5 == pollId) && (m._2.qestionData._1 == answerId)
+        ).map(m => m.swap).map(m => m._1.qestionData._1 -> m._2)
+        if (mapAnsIdToQuuid.nonEmpty) {
+          val uuidQuestion: Long  = mapAnsIdToQuuid(answerId)
+          dataBase.questions(uuidQuestion).qestionData._3 match {
+            case Open =>
+              val newPollCopy = dataBase.polls(pollId).copy(
+                answers = dataBase.polls(pollId).answers + ((userId, uuidQuestion, answerId) -> answer)
+              )
+              dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> newPollCopy))
+              CommandsResponseAlarms.DataWriter("Ваш голос принят")
+              AnswerCorrect
+            case Choice =>
+              ChoiceVoter(answer, uuidQuestion, pollId)
+            case Multi =>
+              MultiVoter(answer, uuidQuestion, pollId)
+          }
+        }
+        else {
+          CommandsResponseAlarms.DataWriter(
+            "Ошибка. Вы не находитесь в контексте данного опроса"
+          )
+          AnswerIndexError
+        }
+      }
+      else {
+        CommandsResponseAlarms.AnswerUnavaliablePollNotStarted()
+        AnswerUnavaliablePollNotRun
+      }
+    }
+    else {
+      CommandsResponseAlarms.ContextNotBegin()
+      AnswerContextError
+    }
   }
 }

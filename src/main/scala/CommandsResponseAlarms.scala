@@ -28,5 +28,6 @@ object CommandsResponseAlarms {
   def ContextNotExist(pollId: Long): Unit = printer(s"Контекст " + pollId.toString + " не существует, вероятно pollID указан не верно")
   def ContextEnd(): Unit = printer(s"Вы вышли из контекста")
   def ContextNotBegin(): Unit = printer(s"Ошибка. Вы не заходили в контекст")
+  def AnswerUnavaliablePollNotStarted(): Unit = printer(s"Ошибка. Опрос не активен")
 
 }

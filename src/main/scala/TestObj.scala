@@ -1,6 +1,8 @@
+import BotKernel._
+
 object TestObj {
   def main(args: Array[String]): Unit = {
-    /*val t = new DateTimeSolver()
+    /*/*val t = new DateTimeSolver()
     t.SetTime("01:01:01 21:12:01")
     val poll: Long = PollCommands().CreatePoll("lol", anonymity = false, timeStart = t)*/
     BotKernel.CreatePoll(777, "azino"/*, timeStartStr = ""*/, timeStopStr = "01:01:01 20:12:01")
@@ -118,5 +120,36 @@ object TestObj {
     }
     println("-------------------------")
     BotKernel.List
+  }*/
+    val user1 = 228
+    val user2 = 666
+    val admin = 777
+    val id1poll = CreatePoll(user1, "poll1", anonymity = false, Continuous)
+    val id1pol2 = CreatePoll(user2, "poll2", anonymity = false, Continuous)
+
+    Begin(id1pol2, user1)
+    Begin(id1pol2, user2)
+
+    val num1 = AddQuestion(user1, "ШАпки 228...", Multi, Vector[String]("только", "долбоёбы", "носят"))
+    val num2 = AddQuestion(user1, "ШАпки 229...", Choice, Vector[String]("только", "долбоёбы", "носят"))
+    val num3 = AddQuestion(user2, "111", Multi, Vector[String]("это", "хардбасс", "aaaaaaaaa"))
+    val num4 = AddQuestion(user2, "ВИШНЁВАЯ СЕМЁРКА", Open, Vector[String]("НЕОНОВЫЕ", "ФАРЫ", "ЧОРНАЯПРИОА", "СЕРАЯ ДЕВЯТКА"))
+
+    StartPoll(id1pol2, user1)
+    StartPoll(id1pol2, user2)
+
+    Answer(user1, num3.toInt, "1")
+    Answer(user1, num3.toInt, "1 2")
+    Answer(user2, num3.toInt, "3 2 2 1")
+    Answer(user2, num3.toInt, "2 1")
+
+    View(user1)
+    View(user2)
+
+    Result(id1poll)
+    Result(id1pol2)
+
+    End(user1)
+    End(user2)
   }
 }
