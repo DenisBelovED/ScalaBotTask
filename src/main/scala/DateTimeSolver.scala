@@ -4,7 +4,7 @@ import org.joda.time.format.DateTimeFormat
 class DateTimeSolver{
   private var dateTime: DateTime = _
 
-  def SetTime(timeStr: String): Any ={
+  def SetTime(timeStr: String): TimeStatus ={
     try{
       dateTime = DateTimeFormat.forPattern("hh:mm:ss yy:MM:dd").parseDateTime(timeStr)
       if (DateTime.now().getMillis > dateTime.getMillis)
@@ -20,8 +20,8 @@ class DateTimeSolver{
     }
   }
 
-  def GetTimeMili() : Any = {
-    if (dateTime == null) TimeNotStated else dateTime.getMillis
+  def GetTimeMili() : Long = {
+    if (dateTime == null) -1 else dateTime.getMillis
   }
 }
 
@@ -32,5 +32,5 @@ class DateTimeSolver{
     time.SetTime("01:01:01 12:01:05") - указали время:
         если оно правильное, то возвращает TimeStatus - CorrectTime
         иначе другие TimeStatus, все они описаны в файле StatusTypes
-    time.GetTimeMili() - получаем Long, или TimeNotStated, в зависимости от того, какой был TimeStatus при указании времени
+    time.GetTimeMili() - получаем Long, или -1, в зависимости от того, какой был TimeStatus при указании времени
  */

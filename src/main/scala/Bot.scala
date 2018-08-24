@@ -5,5 +5,5 @@ import scala.io.Source
 
 object Bot extends TelegramBot with Polling with Commands{
   lazy val token: String = Source.fromFile("src\\main\\scala\\bot.token").getLines().mkString
-  onCommand('list) { implicit msg => reply(BotKernel.List) }
+  onCommand('list) { implicit msg => reply("HI" + BotKernel.List) }
 }
