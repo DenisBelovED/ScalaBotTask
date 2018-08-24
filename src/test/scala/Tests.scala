@@ -1,4 +1,5 @@
 import org.scalatest._
+import BotKernel._
 
 class Tests extends FlatSpec with Matchers{
   "DateTimeSolver tests SetTime()" should "CorrectTime правильное время" in {
@@ -46,19 +47,34 @@ class Tests extends FlatSpec with Matchers{
     time.SetTime("01:01:01 2017:12:01") == IncorrectTime should be (true)
   }
 
-  "DateTimeSolver tests GetTimeMili()" should "TimeNotStated при CorrectTime" in {
+  "DateTimeSolver tests GetTimeMili()" should "-1 при CorrectTime" in {
     val time = new DateTimeSolver()
     time.SetTime("01:01:01 20:12:01") == CorrectTime should be (true)
-    time.GetTimeMili() != TimeNotStated  should be (true)
+    time.GetTimeMili() != -1  should be (true)
   }
-  it should "TimeNotStated при IncorrectTime" in {
+  it should "-1 при IncorrectTime" in {
     val time = new DateTimeSolver()
     time.SetTime("01:01:01 17:12:01") == IncorrectTime should be (true)
-    time.GetTimeMili() == TimeNotStated  should be (true)
+    time.GetTimeMili() == -1  should be (true)
   }
-  it should "TimeNotStated при InvalidTimeFormat" in {
+  it should "-1 при InvalidTimeFormat" in {
     val time = new DateTimeSolver()
     time.SetTime("01:01:01 12:01") == InvalidTimeFormat should be (true)
-    time.GetTimeMili() == TimeNotStated  should be (true)
+    time.GetTimeMili() == -1  should be (true)
+  }
+
+  "BotKernel test TimerAutoController" should "проверка автостарта и автостопа" in {
+    val user1 = 1234567890
+    val timeStart = "03:13:01 18:08:25"
+    val timeStop = "03:19:01 18:08:25"
+    val pollId = CreatePoll(user1, "name", true, Continuous, timeStart, timeStop)
+    Thread.sleep(300000)
+    TimerAutoController()
+    TimerAutoController()
+    dataBase.polls(pollId).status == PollStart should be (true)
+    Thread.sleep(300000)
+    TimerAutoController()
+    TimerAutoController()
+    dataBase.polls(pollId).status == PollStop should be (true)
   }
 }
