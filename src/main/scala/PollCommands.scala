@@ -46,7 +46,7 @@ case class PollCommands(var dataBase: DataEntities) {
   def List: String =
   {
     val answer = dataBase.polls.map(
-      t => {"user id = " + t._2.creatorId + " : poll id = " + t._2.pollId + " : " + t._2.name + " - " + t._2.status}
+      t => {"creator id = " + t._2.creatorId + " : poll id = " + t._2.pollId + " : " + t._2.name + " - " + t._2.status}
     ).mkString("\n")
     CommandsResponseAlarms.DataWriter(answer)
     answer
@@ -54,77 +54,95 @@ case class PollCommands(var dataBase: DataEntities) {
 
   def DeletePoll(pollId: Long, userId: Int): PollStatus =
   {
-    if(dataBase.polls(pollId).creatorId == userId){
-      if (Try(dataBase = dataBase.copy(polls = dataBase.polls - pollId)).isSuccess){
-        CommandsResponseAlarms.PollSuccessDelete()
-        PollSuccessDelete
+    if(dataBase.polls.contains(pollId)){
+      if(dataBase.polls(pollId).creatorId == userId){
+        if (Try(dataBase = dataBase.copy(polls = dataBase.polls - pollId)).isSuccess){
+          CommandsResponseAlarms.PollSuccessDelete()
+          PollSuccessDelete
+        }
+        else {
+          CommandsResponseAlarms.PollFailedDelete()
+          PollFailedDelete
+        }
       }
       else {
-        CommandsResponseAlarms.PollFailedDelete()
-        PollFailedDelete
+        CommandsResponseAlarms.PollDeleteError()
+        PollPrivilegeError
       }
     }
     else {
-      CommandsResponseAlarms.PollDeleteError()
-      PollPrivilegeError
+      CommandsResponseAlarms.PollNotExist()
+      PollNotExist
     }
   }
 
   def StartPoll(pollId: Long, userId: Int): PollStatus =
   {
-    if(dataBase.polls(pollId).creatorId == userId){
-      dataBase.polls(pollId).status match {
-        case PollStart =>
-          CommandsResponseAlarms.PollStarted()
-          PollStart
-        case PollStop | PollHasNotYetBeenLaunched =>
-          if (dataBase.polls(pollId).timeStart == null) {
-            CommandsResponseAlarms.PollStartFromHandle()
-            val poll = dataBase.polls(pollId)
-            dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> poll.copy(status = PollStart)))
+    if(dataBase.polls.contains(pollId)){
+      if(dataBase.polls(pollId).creatorId == userId){
+        dataBase.polls(pollId).status match {
+          case PollStart =>
+            CommandsResponseAlarms.PollStarted()
             PollStart
-          }
-          else {
-            CommandsResponseAlarms.PollStartFromTimer()
-            PollStop
-          }
-        case _ =>
-          CommandsResponseAlarms.PollNotExist()
-          PollNotExist
+          case PollStop | PollHasNotYetBeenLaunched =>
+            if (dataBase.polls(pollId).timeStart == null) {
+              CommandsResponseAlarms.PollStartFromHandle()
+              val poll = dataBase.polls(pollId)
+              dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> poll.copy(status = PollStart)))
+              PollStart
+            }
+            else {
+              CommandsResponseAlarms.PollStartFromTimer()
+              PollStop
+            }
+          case _ =>
+            CommandsResponseAlarms.PollNotExist()
+            PollNotExist
+        }
+      }
+      else {
+        CommandsResponseAlarms.StartPollPremissionError()
+        PollPrivilegeError
       }
     }
     else {
-      CommandsResponseAlarms.StartPollPremissionError()
-      PollPrivilegeError
+      CommandsResponseAlarms.PollNotExist()
+      PollNotExist
     }
   }
 
   def StopPoll(pollId: Long, userId: Int): PollStatus =
   {
-    if(dataBase.polls(pollId).creatorId == userId){
-      dataBase.polls(pollId).status match {
-        case PollStop | PollHasNotYetBeenLaunched =>
-          CommandsResponseAlarms.PollStoped()
-          PollStop
-        case PollStart =>
-          if (dataBase.polls(pollId).timeStop == null) {
-            CommandsResponseAlarms.PollStopFromHandle()
-            val poll = dataBase.polls(pollId)
-            dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> poll.copy(status = PollStop)))
+    if(dataBase.polls.contains(pollId)){
+      if(dataBase.polls(pollId).creatorId == userId){
+        dataBase.polls(pollId).status match {
+          case PollStop | PollHasNotYetBeenLaunched =>
+            CommandsResponseAlarms.PollStoped()
             PollStop
-          }
-          else {
-            CommandsResponseAlarms.PollStopFromTimer()
-            PollStart
-          }
-        case _ =>
-          CommandsResponseAlarms.PollNotExist()
-          PollNotExist
+          case PollStart =>
+            if (dataBase.polls(pollId).timeStop == null) {
+              CommandsResponseAlarms.PollStopFromHandle()
+              val poll = dataBase.polls(pollId)
+              dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> poll.copy(status = PollStop)))
+              PollStop
+            }
+            else {
+              CommandsResponseAlarms.PollStopFromTimer()
+              PollStart
+            }
+          case _ =>
+            CommandsResponseAlarms.PollNotExist()
+            PollNotExist
+        }
+      }
+      else {
+        CommandsResponseAlarms.StopPollPremissionError()
+        PollPrivilegeError
       }
     }
     else {
-      CommandsResponseAlarms.StopPollPremissionError()
-      PollPrivilegeError
+      CommandsResponseAlarms.PollNotExist()
+      PollNotExist
     }
   }
 
@@ -156,29 +174,35 @@ case class PollCommands(var dataBase: DataEntities) {
       }
     }
 
-    dataBase.polls(pollId).status match {
-      case PollHasNotYetBeenLaunched =>
-        CommandsResponseAlarms.PollHasNotYetBeenLaunched()
-        "PollHasNotYetBeenLaunched"
-      case PollStart =>
-        dataBase.polls(pollId).visibility match {
-          case Continuous =>
-            val res = CountResult
-            CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " активен")
-            CommandsResponseAlarms.DataWriter(res)
-            res
-          case AfterStop =>
-            CommandsResponseAlarms.PollNotAble()
-            "PollNotAble"
-        }
-      case PollStop =>
-        val res = CountResult
-        CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " остановлен")
-        CommandsResponseAlarms.DataWriter(res)
-        res
-      case _ =>
-        CommandsResponseAlarms.PollException()
-        "PollException"
+    if(dataBase.polls.contains(pollId)){
+      dataBase.polls(pollId).status match {
+        case PollHasNotYetBeenLaunched =>
+          CommandsResponseAlarms.PollHasNotYetBeenLaunched()
+          "PollHasNotYetBeenLaunched"
+        case PollStart =>
+          dataBase.polls(pollId).visibility match {
+            case Continuous =>
+              val res = CountResult
+              CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " активен")
+              CommandsResponseAlarms.DataWriter(res)
+              res
+            case AfterStop =>
+              CommandsResponseAlarms.PollNotAble()
+              "PollNotAble"
+          }
+        case PollStop =>
+          val res = CountResult
+          CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " остановлен")
+          CommandsResponseAlarms.DataWriter(res)
+          res
+        case _ =>
+          CommandsResponseAlarms.PollException()
+          "PollException"
+      }
+    }
+    else {
+      CommandsResponseAlarms.PollNotExist()
+      "PollNotExist"
     }
   }
 
@@ -371,7 +395,7 @@ case class PollCommands(var dataBase: DataEntities) {
         AnswerCorrect
       } else {
         CommandsResponseAlarms.DataWriter("Ошибка. Вы указали не число или индекс, которого не существует")
-        AnswerIncorrect
+        AnswerIndexError
       }
     }
 
