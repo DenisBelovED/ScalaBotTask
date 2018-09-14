@@ -1,5 +1,5 @@
 import java.util.UUID.randomUUID
 
 object UUIDGenerator {
-  def GetUUID(): Long = randomUUID().getMostSignificantBits & Long.MaxValue
+  def GetUUID(): Long = randomUUID().getMostSignificantBits & Long.MaxValue % 100000000
 }

@@ -1,3 +1,7 @@
+import info.mukel.telegrambot4s.methods.ParseMode.ParseMode
+import info.mukel.telegrambot4s.models.{Message, ReplyMarkup}
+
+import scala.concurrent.Future
 import scala.util.Try
 
 case class PollCommands(var dataBase: DataEntities) {
@@ -7,7 +11,13 @@ case class PollCommands(var dataBase: DataEntities) {
                   anonymity: Boolean = true,
                   visibility: PollResultVisibility = AfterStop,
                   timeStartStr: String = null,
-                  timeStopStr: String = null): Long =
+                  timeStopStr: String = null,
+                  reply: (String,
+                    Option[ParseMode],
+                    Option[Boolean],
+                    Option[Boolean],
+                    Option[Int],
+                    Option[ReplyMarkup]) => Future[Message]): Long =
   {
     val pollId = UUIDGenerator.GetUUID()
     val timeStart = new DateTimeSolver()
@@ -38,7 +48,7 @@ case class PollCommands(var dataBase: DataEntities) {
         dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> poll))
         pollId
       case _ =>
-        CommandsResponseAlarms.TimeException()
+        reply("Неверно указано время", None, None, None, None, None)
         -1
     }
   }
@@ -48,7 +58,6 @@ case class PollCommands(var dataBase: DataEntities) {
     val answer = dataBase.polls.map(
       t => {"creator id = " + t._2.creatorId + " : poll id = " + t._2.pollId + " : " + t._2.name + " - " + t._2.status}
     ).mkString("\n")
-    CommandsResponseAlarms.DataWriter(answer)
     answer
   }
 
@@ -146,10 +155,19 @@ case class PollCommands(var dataBase: DataEntities) {
     }
   }
 
-  def Result(pollId: Long): String =
+  def Result(pollId: Long,
+             userId: Int,
+             reply: (String,
+               Option[ParseMode],
+               Option[Boolean],
+               Option[Boolean],
+               Option[Int],
+               Option[ReplyMarkup]) => Future[Message]): String =
   {
-    def CountResult: String = {
-      val results = dataBase.polls(pollId).answers
+    def CountResult(id: Long, num: Int): String = {
+      val results = dataBase.polls(pollId)
+        .answers
+        .filter(p => (p._1._2 == id) && (p._1._3 == num) && (p._1._1 == userId))
       if (dataBase.polls(pollId).anonymoys) {
         "всего ответов: " + results.size + "\n" +
           results
@@ -182,19 +200,25 @@ case class PollCommands(var dataBase: DataEntities) {
         case PollStart =>
           dataBase.polls(pollId).visibility match {
             case Continuous =>
-              val res = CountResult
-              CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " активен")
-              CommandsResponseAlarms.DataWriter(res)
-              res
+              dataBase.polls(pollId).answers.foreach(p =>
+                reply("Вопрос: " + dataBase.questions(p._1._2).qestionData._2 + "\n" +
+                CountResult(p._1._2, p._1._3), None, None, None, None, None)
+              )
+              reply("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " активен",
+                None, None, None, None, None)
+              "ResultWrited"
             case AfterStop =>
               CommandsResponseAlarms.PollNotAble()
               "PollNotAble"
           }
         case PollStop =>
-          val res = CountResult
-          CommandsResponseAlarms.DataWriter("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " остановлен")
-          CommandsResponseAlarms.DataWriter(res)
-          res
+          dataBase.polls(pollId).answers.foreach(p =>
+            reply("Вопрос: " + dataBase.questions(p._1._2).qestionData._2 + "\n" +
+              CountResult(p._1._2, p._1._3), None, None, None, None, None)
+          )
+          reply("Опрос " + pollId.toString + " " + dataBase.polls(pollId).name + " остановлен",
+            None, None, None, None, None)
+          "ResultWrited"
         case _ =>
           CommandsResponseAlarms.PollException()
           "PollException"
@@ -231,20 +255,24 @@ case class PollCommands(var dataBase: DataEntities) {
     }
   }
 
-  def View(userId: Int): String =
+  def View(userId: Int,
+           reply: (String,
+             Option[ParseMode],
+             Option[Boolean],
+             Option[Boolean],
+             Option[Int],
+             Option[ReplyMarkup]) => Future[Message]): String =
   {
     if(dataBase.contexts.contains(userId)) {
       val pollId = dataBase.contexts(userId)
       dataBase.questions.foreach(m => {
         if(m._2.qestionData._5 == pollId) {
           val res = "\n" +
-            //"Уникальный ID вопроса : " + m._1.toString + "\n" +
             "Индекс вопроса : " + m._2.qestionData._1.toString + "\n" +
             "Заголовок вопроса : " + m._2.qestionData._2 + "\n" +
             "Тип вопроса : " + m._2.qestionData._3.toString + "\n" +
             "Варианты ответов\n - " + m._2.qestionData._4.mkString("\n - ")
-          CommandsResponseAlarms.DataWriter(res)
-          res
+          reply(res, None, None, None, None, None)
         }
       })
       "Correct view"
@@ -259,7 +287,13 @@ case class PollCommands(var dataBase: DataEntities) {
                    userId: Int,
                    question: String,
                    typeQuestion: QuestionType = Open,
-                   varAnswers: Vector[String]
+                   varAnswers: Vector[String],
+                   reply: (String,
+                     Option[ParseMode],
+                     Option[Boolean],
+                     Option[Boolean],
+                     Option[Int],
+                     Option[ReplyMarkup]) => Future[Message]
                  ): String =
   {
     if(dataBase.contexts.contains(userId)) {
@@ -272,16 +306,18 @@ case class PollCommands(var dataBase: DataEntities) {
               )
           )
           val res = dataBase.questions(uuid)
-          CommandsResponseAlarms.DataWriter(
+          reply(
             "Добавлен вопрос: " + res.qestionData._2 + "\n" +
               "Статус: " + res.qestionData._3.toString + "\n" +
               "Варианты ответа:\n - " + res.qestionData._4.mkString("\n - ") + "\n" +
-              "Номер: " + res.qestionData._1.toString
+              "Номер: " + res.qestionData._1.toString,
+            None, None, None, None, None
           )
           res.qestionData._1.toString
         }
         else {
-          CommandsResponseAlarms.DataWriter("Ошибка. Опрос запущен, контекст нельзя изменить")
+          reply("Ошибка. Опрос запущен, контекст нельзя изменить",
+            None, None, None, None, None)
           "Question context immutable"
         }
       }
@@ -296,7 +332,14 @@ case class PollCommands(var dataBase: DataEntities) {
     }
   }
 
-  def DeleteQuestion(questionId: Int, userId: Int): QuestionStatus =
+  def DeleteQuestion(questionId: Int,
+                     userId: Int,
+                     reply: (String,
+                       Option[ParseMode],
+                       Option[Boolean],
+                       Option[Boolean],
+                       Option[Int],
+                       Option[ReplyMarkup]) => Future[Message]): QuestionStatus =
   {
     if(dataBase.contexts.contains(userId)) {
       if(userId == dataBase.polls(dataBase.contexts(userId)).creatorId){
@@ -315,23 +358,28 @@ case class PollCommands(var dataBase: DataEntities) {
               )
             }
             )
-            CommandsResponseAlarms.DataWriter("Вопрос " + questionId.toString + " удалён")
-            CommandsResponseAlarms.DataWriter("теперь опрос выглядит так:")
+            reply("Вопрос " + questionId.toString + " удалён",
+              None, None, None, None, None)
+            reply("теперь опрос выглядит так:",
+              None, None, None, None, None)
             dataBase.questions.foreach(q =>
-              CommandsResponseAlarms.DataWriter(
+              reply(
                 q._2.qestionData._1.toString + ") " + q._2.qestionData._2 + "\n - " +
-                  q._2.qestionData._4.mkString("\n - ")
+                  q._2.qestionData._4.mkString("\n - "),
+                None, None, None, None, None
               )
             )
             QuestionSuccessDelete
           }
           else {
-            CommandsResponseAlarms.DataWriter("Ошибка. Указан неверный номер вопроса")
+            reply("Ошибка. Указан неверный номер вопроса",
+              None, None, None, None, None)
             QuestionFailedDelete
           }
         }
         else {
-          CommandsResponseAlarms.DataWriter("Ошибка. Опрос запущен, контекст нельзя изменить")
+          reply("Ошибка. Опрос запущен, контекст нельзя изменить",
+            None, None, None, None, None)
           QuestionContextImmutable
         }
       }
@@ -346,8 +394,15 @@ case class PollCommands(var dataBase: DataEntities) {
     }
   }
 
-  //TODO Check to int
-  def Answer(userId: Int, answerId: Int, answer: String): AnswerStatus =
+  def Answer(userId: Int,
+             answerId: Int,
+             answer: String,
+             reply: (String,
+               Option[ParseMode],
+               Option[Boolean],
+               Option[Boolean],
+               Option[Int],
+               Option[ReplyMarkup]) => Future[Message]): AnswerStatus =
   {
     def ChoiceVoter(ans: String, uuidQuestion: Long, pollId: Long): AnswerStatus = {
       Try(ans.toInt).map(i => {
@@ -356,15 +411,18 @@ case class PollCommands(var dataBase: DataEntities) {
             answers = dataBase.polls(pollId).answers + ((userId, uuidQuestion, answerId) -> i.toString)
           )
           dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> newPollCopy))
-          CommandsResponseAlarms.DataWriter("Ваш голос принят")
+          reply("Ваш голос принят",
+            None, None, None, None, None)
           AnswerCorrect
         }
         else {
-          CommandsResponseAlarms.DataWriter("Ошибка. Указанный индекс вопроса не существует")
+          reply("Ошибка. Указанный индекс вопроса не существует",
+            None, None, None, None, None)
           AnswerIndexError
         }
       }).getOrElse({
-        CommandsResponseAlarms.DataWriter("Ошибка. Вы указали не число")
+        reply("Ошибка. Вы указали не число",
+          None, None, None, None, None)
         AnswerIncorrect
       })
     }
@@ -391,10 +449,12 @@ case class PollCommands(var dataBase: DataEntities) {
           AnswerIncorrect
         })
       }).contains(AnswerIncorrect)) {
-        CommandsResponseAlarms.DataWriter("Ваш голос принят")
+        reply("Ваш голос принят",
+          None, None, None, None, None)
         AnswerCorrect
       } else {
-        CommandsResponseAlarms.DataWriter("Ошибка. Вы указали не число или индекс, которого не существует")
+        reply("Ошибка. Вы указали не число или индекс, которого не существует",
+          None, None, None, None, None)
         AnswerIndexError
       }
     }
@@ -413,7 +473,8 @@ case class PollCommands(var dataBase: DataEntities) {
                 answers = dataBase.polls(pollId).answers + ((userId, uuidQuestion, answerId) -> answer)
               )
               dataBase = dataBase.copy(polls = dataBase.polls + (pollId -> newPollCopy))
-              CommandsResponseAlarms.DataWriter("Ваш голос принят")
+              reply("Ваш голос принят",
+                None, None, None, None, None)
               AnswerCorrect
             case Choice =>
               ChoiceVoter(answer, uuidQuestion, pollId)
@@ -422,8 +483,9 @@ case class PollCommands(var dataBase: DataEntities) {
           }
         }
         else {
-          CommandsResponseAlarms.DataWriter(
-            "Ошибка. Вы не находитесь в контексте данного опроса"
+          reply(
+            "Ошибка. Вы не находитесь в контексте данного опроса",
+            None, None, None, None, None
           )
           AnswerIndexError
         }

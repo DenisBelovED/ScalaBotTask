@@ -1,7 +1,13 @@
 import org.joda.time.DateTime
 
+import scala.util.Try
+
 object BotKernel extends PollCommands(DataEntities(Map.empty, Map.empty, Map.empty))
 {
+  def Parse(s: String): Try[Command] = {
+    CommandParser.parse(s)
+  }
+
   def TimerAutoController(): Unit = {
     dataBase.polls.foreach(m => {
       if(m._2.timeStart != null){

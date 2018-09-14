@@ -1,16 +1,15 @@
 object CommandsResponseAlarms {
-  private def printer(s: String): Unit = println(s) //TODO вывод в чат
+  private def printer(s: String): Unit = println(s)
   def TimeAlarm(): Unit = printer(s"Неверный формат времени. Формат: hh:mm:ss yy:MM:dd")
   def TimeNotSatatement(pollId: Long): Unit = printer(s"Время старта и окончания не указано, ID опроса: " + pollId.toString)
   def TimeInvalid(): Unit = printer(s"Указанное время неверно")
   def TimeIsCorrect(pollId: Long): Unit = printer(s"Время старта и окончания указано правильно, ID опроса: " + pollId.toString)
   def TimeIsCorrectStart(pollId: Long): Unit = printer(s"Время старта указано правильно, ID опроса: " + pollId.toString)
   def TimeIsCorrectStop(pollId: Long): Unit = printer(s"Время окончания указано правильно, ID опроса: " + pollId.toString)
-  def TimeException(): Unit = printer(s"Ошибка в указании времени. Формат: hh:mm:ss yy:MM:dd")
+  def TimeException = s"Ошибка в указании времени. Формат: hh:mm:ss yy:MM:dd"
   def PollSuccessDelete(): Unit = printer(s"Опрос удалён")
   def PollFailedDelete(): Unit = printer(s"Опрос не удалён, возможно его не существует")
   def PollDeleteError(): Unit = printer(s"Удаление недоступно - вы не являетесь владельцем опроса")
-  def DataWriter(s: String): Unit = printer(s)
   def StartPollPremissionError(): Unit = printer(s"Вы не можете запустить этот опрос")
   def StopPollPremissionError(): Unit = printer(s"Вы не можете остановить этот опрос")
   def PollStarted(): Unit = printer(s"Опрос уже запущен")
@@ -29,5 +28,4 @@ object CommandsResponseAlarms {
   def ContextEnd(): Unit = printer(s"Вы вышли из контекста")
   def ContextNotBegin(): Unit = printer(s"Ошибка. Вы не заходили в контекст")
   def AnswerUnavaliablePollNotStarted(): Unit = printer(s"Ошибка. Опрос не активен")
-
 }
